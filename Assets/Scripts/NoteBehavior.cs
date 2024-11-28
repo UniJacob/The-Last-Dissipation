@@ -1,43 +1,48 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public class NoteBehavior : MonoBehaviour
 {
-    [SerializeField] private float FadeRate, ScaleRate;
-    [SerializeField] private float DefaultScale;
-    [SerializeField] private float ScaleMultiplierWhenTapped, ScaleRateMultiplierWhenTapped;
+    [SerializeField] float NoteFadeRate, NoteRelativeScaleRate;
+    [SerializeField] float DefaultNoteSize, SpawnScaleMultiplier;
+    [SerializeField] float ScaleMultiplierWhenTapped, ScaleRateMultiplierWhenTapped, FadeRateMultiplierWhenTapped;
     [SerializeField] private string MainNoteTag, TappedNoteTag;
 
+    [HideInInspector] public bool WasTapped = false, WasMissed = false;
+
     private bool IsFading = true, IsGrowing = false, ToDestroy = false;
-    public bool WasTapped = false;
     private float ScaleWhenTapped = 0;
     private List<Transform> MainNoteGO = new List<Transform>(), TappedGO = new List<Transform>();
     private Dictionary<string, List<Transform>> TransformsMap = new Dictionary<string, List<Transform>>();
+    private SpriteRenderer[] spriteRenderers;
+
+    private int debug = 1;
 
     void Start()
     {
-        SetAlpha(0, MainNoteTag);
-        SetAlpha(0, TappedNoteTag);
-        SetScale(DefaultScale);
+        spriteRenderers = GetComponentsInChildren<SpriteRenderer>();
+        NoteFadeRate /= 100;
+        NoteRelativeScaleRate /= 100;
 
-        ScaleRate /= 100;
-        FadeRate /= 100;
-
-        MainNoteGO.Add(transform);
+        //MainNoteGO.Add(transform);
         foreach (Transform child in transform)
         {
             if (child.CompareTag(TappedNoteTag))
             {
                 TappedGO.Add(child);
             }
-            else if (child.CompareTag(MainNoteTag))
-            {
-                MainNoteGO.Add(child);
-            }
+            //    else if (child.CompareTag(MainNoteTag))
+            //    {
+            //        MainNoteGO.Add(child);
+            //    }
         }
-        TransformsMap.Add(MainNoteTag, MainNoteGO);
+        //TransformsMap.Add(MainNoteTag, MainNoteGO);
         TransformsMap.Add(TappedNoteTag, TappedGO);
+
+        SetAlpha(0, MainNoteTag);
+        SetAlpha(0, TappedNoteTag);
+        float firstScale = DefaultNoteSize * SpawnScaleMultiplier;
+        transform.localScale = new(firstScale, firstScale, 1);
     }
 
     void Update()
@@ -53,96 +58,122 @@ public class NoteBehavior : MonoBehaviour
             {
                 ScaleWhenTapped = transform.localScale.x;
                 IsGrowing = true;
+                IsFading = true;
                 SetAlpha(1, TappedNoteTag);
             }
             GradualDestroy();
         }
+        else if (WasMissed)
+        {
+            if (!GradualFade(0, NoteFadeRate * FadeRateMultiplierWhenTapped, MainNoteTag))
+            {
+                ToDestroy = true;
+            }
+        }
         else if (IsFading)
         {
-            GradualFade(1, MainNoteTag);
+            IsFading = GradualFade(1, NoteFadeRate, MainNoteTag);
+            IsGrowing = !IsFading;
         }
         else if (IsGrowing)
         {
-            IsGrowing = GradualGrow(1, 1);
+            IsGrowing = GradualGrow(DefaultNoteSize, NoteRelativeScaleRate, transform);
         }
     }
-
     private void SetAlpha(float a, string tag)
     {
-        SpriteRenderer[] spriteRenderers = GetComponentsInChildren<SpriteRenderer>()
-            .Where(sr => sr.gameObject.CompareTag(tag)).ToArray();
-
         foreach (SpriteRenderer sr in spriteRenderers)
         {
-            Color color = sr.color;
-            color.a = a;
-            sr.color = color;
+            if (sr.CompareTag(tag))
+            {
+                Color col = sr.color;
+                col.a = a;
+                sr.color = col;
+            }
         }
     }
-
-    private void GradualFade(float fadeMultiplier, string tag)
-    {
-        Color newCol = GetComponent<SpriteRenderer>().color;
-        float alphaToAdd = FadeRate * fadeMultiplier * Time.deltaTime;
-        float newAlpha = newCol.a + alphaToAdd;
-        if (newAlpha >= 1)
-        {
-            newAlpha = 1;
-            IsFading = false;
-            IsGrowing = true;
-        }
-        SetAlpha(newAlpha, tag);
-    }
-
-    private void SetScale(float s)
-    {
-        transform.localScale = new Vector3(s, s, 1);
-    }
-    private void SetScale(float s, string tag)
-    {
-        if (tag.Equals(""))
-        {
-            SetScale(s);
-            return;
-        }
-        foreach (Transform taggedTransform in TransformsMap[tag])
-        {
-            Debug.Log(taggedTransform.name);
-            taggedTransform.localScale = new Vector3(s, s, 1);
-        }
-    }
-
-    private bool GradualGrow(float maxScale, float scaleRateMultiplier)
+    private bool GradualFade(float targetAlpha, float fadeRate, string tag)
     {
         bool ans = true;
-        float scaleToAdd = ScaleRate * scaleRateMultiplier * Time.deltaTime;
-        float newScale = transform.localScale.x + scaleToAdd;
+        SpriteRenderer tmp = spriteRenderers[0];
+        int i = 1;
+        while (!tmp.CompareTag(tag))
+        {
+            tmp = spriteRenderers[i++];
+        }
+        Color tmpCol = tmp.color;
+        float alphaToAdd = fadeRate * Time.deltaTime;
+        float newAlpha;
+        if (tmpCol.a < targetAlpha)
+        {
+            newAlpha = tmpCol.a + alphaToAdd;
+            if (newAlpha >= targetAlpha)
+            {
+                newAlpha = targetAlpha;
+                ans = false;
+            }
+        }
+        else
+        {
+            newAlpha = tmpCol.a - alphaToAdd;
+            if (newAlpha <= targetAlpha)
+            {
+                newAlpha = targetAlpha;
+                ans = false;
+            }
+        }
+        SetAlpha(newAlpha, tag);
+        return ans;
+    }
 
+    //private void SetScale(float s)
+    //{
+    //    transform.localScale = new Vector3(s, s, 1);
+    //}
+    //private void SetScale(float s, string tag)
+    //{
+    //    //if (tag.Equals(""))
+    //    //{
+    //    //    SetScale(s);
+    //    //    return;
+    //    //}
+    //    foreach (Transform taggedTransform in TransformsMap[tag])
+    //    {
+    //        taggedTransform.localScale = new Vector3(s, s, 1);
+    //    }
+    //}
+
+
+    //private bool GradualGrow(float maxScale, float scaleRateMultiplier, string tag)
+    //{
+    //    bool ans = true;
+    //    float scaleToAdd = DefaultScaleRate * scaleRateMultiplier * Time.deltaTime;
+    //    foreach (Transform taggedTransform in TransformsMap[tag])
+    //    {
+    //        float newScale = taggedTransform.localScale.x + scaleToAdd;
+    //        if (newScale >= maxScale)
+    //        {
+    //            newScale = maxScale;
+    //            //IsGrowing = false;
+    //            ans = false;
+    //        }
+    //        taggedTransform.localScale = new Vector3(newScale, newScale, 1);
+    //    }
+    //    return ans;
+    //}
+    private bool GradualGrow(float maxScale, float scaleRate, Transform tr)
+    {
+        bool ans = true;
+        float scaleToAdd = maxScale * scaleRate * Time.deltaTime;
+        float newScale = tr.localScale.x + scaleToAdd;
         if (newScale >= maxScale)
         {
             newScale = maxScale;
             //IsGrowing = false;
             ans = false;
         }
-        SetScale(newScale);
-        return ans;
-    }
+        tr.localScale = new Vector3(newScale, newScale, 1);
 
-    private bool GradualGrow(float maxScale, float scaleRateMultiplier, string tag)
-    {
-        bool ans = true;
-        float scaleToAdd = ScaleRate * scaleRateMultiplier * Time.deltaTime;
-        foreach (Transform taggedTransform in TransformsMap[tag])
-        {
-            float newScale = taggedTransform.localScale.x + scaleToAdd;
-            if (newScale >= maxScale)
-            {
-                newScale = maxScale;
-                //IsGrowing = false;
-                ans = false;
-            }
-            taggedTransform.localScale = new Vector3(newScale, newScale, 1);
-        }
         return ans;
     }
 
@@ -158,12 +189,26 @@ public class NoteBehavior : MonoBehaviour
         //{
         //    ToDestroy = true;
         //}
-
-        IsGrowing = GradualGrow(maxScale, ScaleRateMultiplierWhenTapped) ||
-            GradualGrow(ScaleWhenTapped * 0.85f, ScaleRateMultiplierWhenTapped * 3, TappedNoteTag);
-        if (!IsGrowing)
+        if (IsGrowing)
+        {
+            float tmpScaleRate = NoteRelativeScaleRate * ScaleRateMultiplierWhenTapped;
+            IsGrowing = GradualGrow(maxScale, tmpScaleRate, transform) ||
+                GradualGrow(0.76f, tmpScaleRate * 5, TransformsMap[TappedNoteTag][0]); //TODO change 0.76f, *5 and maybe remove map
+        }
+        else if (IsFading)
+        {
+            float tmpFadeRate = NoteFadeRate * FadeRateMultiplierWhenTapped;
+            IsFading = GradualFade(0, tmpFadeRate, MainNoteTag) ||
+                GradualFade(0, tmpFadeRate, TappedNoteTag);
+        }
+        else
         {
             ToDestroy = true;
         }
+    }
+
+    public void SetMissed()
+    {
+        WasMissed = true;
     }
 }

@@ -2,9 +2,7 @@ using UnityEngine;
 
 public class ClickToDestroy : MonoBehaviour
 {
-    private void Start()
-    {
-    }
+    private int debug = 0;
 
     void Update()
     {
@@ -16,7 +14,10 @@ public class ClickToDestroy : MonoBehaviour
             {
                 if (hit.collider != null && hit.collider.gameObject == gameObject)
                 {
-                    Debug.Log("Object clicked: " + gameObject.name);
+                    if (debug > 0)
+                    {
+                        Debug.Log("Object clicked: " + gameObject.name);
+                    }
                     try
                     {
                         GetComponent<NoteBehavior>().WasTapped = true;
