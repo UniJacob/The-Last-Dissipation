@@ -2,21 +2,17 @@ using UnityEngine;
 
 public class Timed : MonoBehaviour
 {
-    [SerializeField] float lifeTime = 3;
-    private float timer = 0;
+    private float lifeTime, timer = 0;
 
+    private void Start()
+    {
+        lifeTime = GetComponent<NoteProperties>().LifeTime;
+    }
     void Update()
     {
-        if (timer > lifeTime)
+        if (timer >= lifeTime)
         {
-            try
-            {
-                GetComponent<NoteBehavior>().SetMissed();
-            }
-            catch (System.Exception)
-            {
-                Destroy(gameObject);
-            }
+            //GetComponent<NoteBehavior>().SetMissed();
         }
         else
         {

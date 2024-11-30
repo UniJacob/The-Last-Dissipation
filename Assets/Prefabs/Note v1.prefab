@@ -9,6 +9,14 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 3240627008859184160, guid: 674d879923a88624caf8f10147fecd62, type: 3}
+      propertyPath: FadeRate
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 3240627008859184160, guid: 674d879923a88624caf8f10147fecd62, type: 3}
+      propertyPath: DefaultSize
+      value: 2000
+      objectReference: {fileID: 0}
+    - target: {fileID: 3240627008859184160, guid: 674d879923a88624caf8f10147fecd62, type: 3}
       propertyPath: GeneralScale
       value: 300
       objectReference: {fileID: 0}
@@ -23,6 +31,10 @@ PrefabInstance:
     - target: {fileID: 3240627008859184160, guid: 674d879923a88624caf8f10147fecd62, type: 3}
       propertyPath: DefaultScaleRate
       value: 400
+      objectReference: {fileID: 0}
+    - target: {fileID: 3240627008859184160, guid: 674d879923a88624caf8f10147fecd62, type: 3}
+      propertyPath: RelativeScaleRate
+      value: 110
       objectReference: {fileID: 0}
     - target: {fileID: 3240627008859184160, guid: 674d879923a88624caf8f10147fecd62, type: 3}
       propertyPath: SpawnScaleMultiplier
@@ -109,6 +121,9 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 7711084584979937373, guid: 674d879923a88624caf8f10147fecd62, type: 3}
+      insertIndex: 3
+      addedObject: {fileID: 2613993445341298439}
+    - targetCorrespondingSourceObject: {fileID: 7711084584979937373, guid: 674d879923a88624caf8f10147fecd62, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7694046407047133166}
   m_SourcePrefab: {fileID: 100100000, guid: 674d879923a88624caf8f10147fecd62, type: 3}
@@ -117,6 +132,30 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 7711084584979937373, guid: 674d879923a88624caf8f10147fecd62, type: 3}
   m_PrefabInstance: {fileID: 5259125569338977038}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2613993445341298439
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2593910951533581139}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8273c58318b85dc42938bdb9b9ad9ae3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  NotePrefab: {fileID: 0}
+  FadeRate: 100
+  RelativeScaleRate: 110
+  DefaultSize: 2000
+  SpawnScaleMultiplier: 0.5
+  ScaleMultiplierWhenTapped: 1.2
+  ScaleRateMultiplierWhenTapped: 3
+  FadeRateMultiplierWhenTapped: 5
+  MainNoteTag: Main Note
+  TappedNoteTag: Tapped Note
+  FadeInTime: 0
+  ScaleInTime: 0
 --- !u!114 &7694046407047133166
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -124,9 +163,9 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2593910951533581139}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a04d2826c0fb6dd40a7aff9731aa42df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lifeTime: 2
+  lifeTime: 3
