@@ -24,12 +24,15 @@ public class StageManager : MonoBehaviour
     private const string Exp2 = @"^(?<weight>\d+)\((?<shortNotes>-?\d+(,-?\d+)*)\)$";
     private const string Exp3 = @"^(?<weight>\d+)\[(?<longNotes>-?\d+(,-?\d+)*)\]$";
     private const string Exp4 = @"^(?<weight>\d+)\((?<shortNotes>-?\d+(,-?\d+)*)\)\[(?<longNotes>-?\d+(,-?\d+)*)\]$";
-    [HideInInspector] public readonly string[] RegularExpressions = { Exp1, Exp2, Exp3, Exp4 };
+    public readonly string[] RegularExpressions = { Exp1, Exp2, Exp3, Exp4 };
 
     /* Stage-load data */
     private TextAsset StageFile;
     private string[] lines;
-    [HideInInspector] public float BPM;
+    /// <summary>
+    ///  beats per minute, beats per second or seconds per beat
+    /// </summary>
+    [HideInInspector] public float BPM, BPS, SPB;
     [HideInInspector] public GameObject[][] Notes;
     [HideInInspector] public int[] Weights;
     private int NotesCounter1 = 0, currentVerUnit = 0, NotesZ_val = 0;
@@ -58,6 +61,8 @@ public class StageManager : MonoBehaviour
 
         lines = StageFile.text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
         BPM = float.Parse(lines[0]);
+        BPS = BPM / 60;
+        SPB = 1 / BPS;
 
         LoadNotes();
         Debug.Log("Stage notes loaded");
@@ -177,13 +182,13 @@ public class StageManager : MonoBehaviour
 
     void SetNotesProperties()
     {
-        float timeTillDestruction = 2 / (BPM / 60);
+        float timeTillDestruction = 2 * SPB;
 
         float ScaleInPortion = 0.2f;
         float FadeInPortion = 0.3f;
         float LifeTimePortion = 1;
         float TappedScalePortion = 0.1f;
-        float FadeOutPortion = 0.2f;
+        float FadeOutPortion = 0.1f;
 
         float ScaleInTime = ScaleInPortion * timeTillDestruction;
         float FadeInTime = FadeInPortion * timeTillDestruction;
@@ -204,6 +209,6 @@ public class StageManager : MonoBehaviour
         NP.TappedScaleRate = TappedScaleRate;
         NP.FadeOutRate = FadeOutRate;
 
-        NP.TappedAnimationScaleRate = 10;
+        NP.TappedAnimationScaleRate = 10; // GOTTA WORK ON THIS SHIT WTF
     }
 }

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class StageNoteSpawner : MonoBehaviour
@@ -6,33 +5,49 @@ public class StageNoteSpawner : MonoBehaviour
     [SerializeField] GameObject StageManager;
     private StageManager SM;
 
-    float BPM;
     GameObject[][] Notes;
     int[] Weights;
 
-    void Start()
+    //public static double extraDelay = 0;
+
+    private void Awake()
     {
         SM = StageManager.GetComponent<StageManager>();
         Notes = SM.Notes;
         Weights = SM.Weights;
-        BPM = SM.BPM;
+    }
 
+    void Start()
+    {
         BeginStage();
     }
 
     private async void BeginStage()
     {
+        float tst = 0, BadDelay = 0;
         for (int i = 0; i < Notes.Length; ++i)
         {
+            //float timeBeforeWait = Time.time;
             if (Notes[i] != null)
             {
                 foreach (GameObject note in Notes[i])
                 {
                     note.SetActive(true);
+                    note.GetComponent<NoteBehavior>().TimeAtActivation = Time.time;
                 }
             }
-            float waitTime = 1 / (BPM / 60) / Weights[i];
-            await Awaitable.WaitForSecondsAsync(waitTime);
+            float waitTime = SM.SPB / Weights[i];
+            //float unwantedDelay = NoteBehavior.timeErrorCounter > 0 ? NoteBehavior.timeError / NoteBehavior.timeErrorCounter : 0;
+            //NoteBehavior.timeErrorCounter = 0;
+            //NoteBehavior.timeError = 0;
+            Debug.LogError(BadDelay);
+            await Awaitable.WaitForSecondsAsync(waitTime - BadDelay);
+            BadDelay = Time.time - tst - waitTime;
+            tst = Time.time;
+            //multiplier += 0.001f;
+            //badDelay = Time.time - timeBeforeWait - waitTime;
+            //await Awaitable.WaitForSecondsAsync(waitTime - badDelay - unwantedDelay);
+            //Debug.LogError("badDelay = " + badDelay);
         }
     }
 }

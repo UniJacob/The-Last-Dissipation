@@ -150,6 +150,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stageManager: {fileID: 500725050}
+  barUPS: 0
+  up: 1
 --- !u!212 &158080095
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -392,6 +394,8 @@ MonoBehaviour:
   StageWidth: 0
   StageHeight: 0
   BPM: 0
+  BPS: 0
+  SPB: 0
   Weights: 
   UnitsPerHorUnit: 0
   UnitsPerVerUnit: 0
@@ -805,6 +809,10 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7207219344999790382, guid: d5912c038787f8548950e30150bbb133, type: 3}
+      propertyPath: Bar
+      value: 
+      objectReference: {fileID: 158080093}
     - target: {fileID: 7207219344999790382, guid: d5912c038787f8548950e30150bbb133, type: 3}
       propertyPath: StageManager
       value: 
