@@ -152,6 +152,7 @@ MonoBehaviour:
   stageManager: {fileID: 500725050}
   barUPS: 0
   up: 1
+  bounces: 0
 --- !u!212 &158080095
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -384,7 +385,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   MainCamera: {fileID: 519420031}
   NotePrefab: {fileID: 1519196665}
-  StageFilePath: Stage_Texts/test3
+  StageFilePath: Stage_Texts/test5
   VerticalUnits: 193536
   HorizontalUnits: 30
   VerticalPadding: 5500

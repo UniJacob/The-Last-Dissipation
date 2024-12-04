@@ -24,7 +24,7 @@ public class StageNoteSpawner : MonoBehaviour
 
     private async void BeginStage()
     {
-        float tst = 0, BadDelay = 0;
+        float lastTime = 0, BadDelay = 0;
         for (int i = 0; i < Notes.Length; ++i)
         {
             //float timeBeforeWait = Time.time;
@@ -36,14 +36,14 @@ public class StageNoteSpawner : MonoBehaviour
                     note.GetComponent<NoteBehavior>().TimeAtActivation = Time.time;
                 }
             }
-            float waitTime = SM.SPB / Weights[i];
+            float waitTime = SM.SPB / Weights[i] - BadDelay;
             //float unwantedDelay = NoteBehavior.timeErrorCounter > 0 ? NoteBehavior.timeError / NoteBehavior.timeErrorCounter : 0;
             //NoteBehavior.timeErrorCounter = 0;
             //NoteBehavior.timeError = 0;
-            Debug.LogError(BadDelay);
-            await Awaitable.WaitForSecondsAsync(waitTime - BadDelay);
-            BadDelay = Time.time - tst - waitTime;
-            tst = Time.time;
+            //Debug.LogError(waitTime);
+            await Awaitable.WaitForSecondsAsync(waitTime);
+            BadDelay = Time.time - lastTime - waitTime;
+            lastTime = Time.time;
             //multiplier += 0.001f;
             //badDelay = Time.time - timeBeforeWait - waitTime;
             //await Awaitable.WaitForSecondsAsync(waitTime - badDelay - unwantedDelay);

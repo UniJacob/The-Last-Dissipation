@@ -17,10 +17,9 @@ public class NoteBehavior : MonoBehaviour
     private SpriteRenderer[] spriteRenderers;
 
     [SerializeField] GameObject Bar;
-    public static float timeError = 0;
-    public static int timeErrorCounter = 0;
+    private BarBehavior BB;
 
-    private float TimeTillPerfect, TimeLeftToFadeIn, TimeLeftToScaleIn;
+    private float TimeLeftToFadeIn, TimeLeftToScaleIn;
     [HideInInspector] public float TimeAtActivation;
     public static float LastFullGrownTime = 0;
 
@@ -49,7 +48,8 @@ public class NoteBehavior : MonoBehaviour
 
         TimeLeftToFadeIn = NP.FadeInTime;
         TimeLeftToScaleIn = NP.ScaleInTime + TimeLeftToFadeIn;
-        //TimeTillPerfect = TimeLeftToFadeIn + TimeLeftToScaleIn;
+
+        BB = Bar.GetComponent<BarBehavior>();
     }
 
     private void Start()
@@ -139,25 +139,18 @@ public class NoteBehavior : MonoBehaviour
                 float tmp = Time.time;
                 //Debug.LogError(tmp - LastFullGrownTime);
                 LastFullGrownTime = tmp;
-                ////Debug.LogError("timeTillGrown " + (Time.time - tst));
-                ////Debug.LogError("Note "+(Time.time - tst));
-                ////tst = Time.time;
+                //tst = Time.time;
                 //if (Mathf.Abs(transform.position.y) < 12400)
                 //{
-                //    BarBehavior bh = Bar.GetComponent<BarBehavior>();
-                //    float barY = Bar.transform.position.y;
-                //    float barUPS = bh.barUPS;
-                //    float yDiff = transform.position.y - barY;
-                //    if (bh.up)
-                //    {
-                //        yDiff = -yDiff;
-                //    }
-                //    float timeDelay = yDiff / barUPS;
-                //    //timeError = Mathf.Abs(timeError) > Mathf.Abs(timeDelay) ? timeError : timeDelay;
-                //    timeError = timeDelay;
-                //    //timeError += timeDelay - timeError;
-                //    ++timeErrorCounter;
-                //    //Debug.LogError("yDiff " + yDiff + ", timeDelay " + timeDelay);
+                float barY = Bar.transform.position.y;
+                float barUPS = BB.barUPS;
+                float yDiff = transform.position.y - barY;
+                if (BB.up)
+                {
+                    yDiff = -yDiff;
+                }
+                float timeDelay = yDiff / barUPS;
+                Debug.LogError("yDiff " + yDiff + ", timeDelay " + timeDelay + ", transform.position.y " + transform.position.y);
                 //}
 
                 //bh.transform.position = new Vector3(Bar.transform.position.x, transform.position.y, Bar.transform.position.z);
