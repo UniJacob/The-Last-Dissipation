@@ -6,14 +6,14 @@ using UnityEngine;
 public class StageManager : MonoBehaviour
 {
     [SerializeField] Camera MainCamera;
-    [SerializeField] public GameObject NotePrefab;
+    [SerializeField] GameObject NotePrefab;
     private NoteProperties NP;
 
     /* Stage-grid data */
     [SerializeField] public string StageFilePath = "Stage_Texts/test3"; // Path from "Resources" folder
     [SerializeField] public int VerticalUnits = 4 * 6 * 7 * 8 * 9 * 16; // Musically popular note-weights and time signature
     [SerializeField] public int HorizontalUnits = 30;
-    [SerializeField] public float VerticalPadding = 5500, HorizontalPadding = 4000;
+    float VerticalPadding = 0.15f, HorizontalPadding = 0.1f;
     [HideInInspector] public Vector3 bottomLeftBorder;
     [HideInInspector] public Vector3 topRightBorder;
     [HideInInspector] public float StageWidth;
@@ -46,6 +46,8 @@ public class StageManager : MonoBehaviour
 
     private void Awake()
     {
+        AdjustCamera();
+
         bottomLeftBorder = GetBlBorder();
         topRightBorder = GetTrBorder();
         StageWidth = topRightBorder.x - bottomLeftBorder.x;
@@ -75,18 +77,51 @@ public class StageManager : MonoBehaviour
     {
 
     }
+    public void AdjustCamera()
+    {
+        float targetaspect = 16.0f / 9.0f;
+        float windowaspect = (float)Screen.width / (float)Screen.height;
+        float scaleheight = windowaspect / targetaspect;
+
+        Rect rect = MainCamera.rect;
+        if (scaleheight < 1.0f)
+        {
+            rect.width = 1.0f;
+            rect.height = scaleheight;
+            rect.x = 0;
+            rect.y = (1.0f - scaleheight) / 2.0f;
+            MainCamera.rect = rect;
+        }
+        else
+        {
+            float scalewidth = 1 / scaleheight;
+            rect.width = scalewidth;
+            rect.height = 1;
+            rect.x = (1 - scalewidth) / 2;
+            rect.y = 0;
+            MainCamera.rect = rect;
+        }
+    }
+
     Vector3 GetBlBorder()
     {
         Vector3 tmp = MainCamera.ViewportToWorldPoint(new Vector3(0, 0, Camera.main.nearClipPlane));
-        tmp.x += HorizontalPadding;
-        tmp.y += VerticalPadding;
+        //tmp.x += HorizontalPadding;
+        //tmp.y += VerticalPadding;
+
+        tmp.x *= (1 - HorizontalPadding);
+        tmp.y *= (1 - VerticalPadding);
+        Debug.LogError(1 - HorizontalPadding);
         return tmp;
     }
     Vector3 GetTrBorder()
     {
         Vector3 tmp = MainCamera.ViewportToWorldPoint(new Vector3(1, 1, Camera.main.nearClipPlane));
-        tmp.x -= HorizontalPadding;
-        tmp.y -= VerticalPadding;
+        //tmp.x -= HorizontalPadding;
+        //tmp.y -= VerticalPadding;
+        tmp.x *= (1 - HorizontalPadding);
+        tmp.y *= (1 - VerticalPadding);
+        Debug.LogError(tmp);
         return tmp;
     }
     void LoadNotes()

@@ -23,7 +23,7 @@ public class BarBehavior : MonoBehaviour
         noteProperties = stageManager.GetComponent<NoteProperties>();
 
         Vector3 currScale = transform.localScale;
-        currScale.x = stageManager.StageWidth + stageManager.HorizontalPadding * 1.9f;
+        currScale.x = stageManager.StageWidth * 0.9f;
         transform.localScale = currScale;
 
         barUPS = stageManager.StageHeight * (stageManager.BPM / 60);
@@ -36,7 +36,7 @@ public class BarBehavior : MonoBehaviour
         StartCoroutine(FreezeCoroutine(delayTime));
     }
 
-    void Update()
+    void Update() // Maybe use Vector3.moveTowards() ?
     {
         if (isFrozen) return;
         Vector3 currPosition = transform.position;

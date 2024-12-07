@@ -109,18 +109,7 @@ public class NoteBehavior : MonoBehaviour
         else if (IsFadingIn)
         {
 
-            //timeError = 0;
-            //if (timeErrorCounter > 0)
-            //{
-            //    TimeLeftToFadeIn -= timeError / timeErrorCounter;
-            //    timeError = 0;
-            //    timeErrorCounter = 0;
-            //}
             IsFadingIn = GradualFade2(1, TimeLeftToFadeIn, NP.MainNoteTag);
-            if (!IsFadingIn)
-            {
-                //Debug.LogError("timeTillShown " + (Time.time - tst));
-            }
             IsScalingIn = !IsFadingIn;
         }
 
@@ -129,31 +118,21 @@ public class NoteBehavior : MonoBehaviour
             IsScalingIn = GradualGrow2(NP.DefaultSize, TimeLeftToScaleIn, transform);
             if (!IsScalingIn)
             {
-                //if (TimeLeftToScaleIn != 0)
-                //{
-                //    Debug.LogError(TimeLeftToScaleIn);
-                //    TimeLeftToScaleIn = 0;
-                //}
                 spriteRenderers[0].color = Color.yellow;
 
-                float tmp = Time.time;
+                //float tmp = Time.time;
                 //Debug.LogError(tmp - LastFullGrownTime);
-                LastFullGrownTime = tmp;
-                //tst = Time.time;
-                //if (Mathf.Abs(transform.position.y) < 12400)
-                //{
-                float barY = Bar.transform.position.y;
-                float barUPS = BB.barUPS;
-                float yDiff = transform.position.y - barY;
-                if (BB.up)
-                {
-                    yDiff = -yDiff;
-                }
-                float timeDelay = yDiff / barUPS;
-                Debug.LogError("yDiff " + yDiff + ", timeDelay " + timeDelay + ", transform.position.y " + transform.position.y);
-                //}
+                //LastFullGrownTime = tmp;
 
-                //bh.transform.position = new Vector3(Bar.transform.position.x, transform.position.y, Bar.transform.position.z);
+                //float barY = Bar.transform.position.y;
+                //float barUPS = BB.barUPS;
+                //float yDiff = transform.position.y - barY;
+                //if (BB.up)
+                //{
+                //    yDiff = -yDiff;
+                //}
+                //float timeDelay = yDiff / barUPS;
+                //Debug.LogError("yDiff " + yDiff + ", timeDelay " + timeDelay + ", transform.position.y " + transform.position.y);
             }
         }
     }
