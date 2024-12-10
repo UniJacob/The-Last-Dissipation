@@ -92,7 +92,7 @@ Assets/Plugins/**       linguist-vendored
 *.aiff                  lfs
 *.it                    lfs
 *.mod                   lfs
-*.mp3                   lfs
+# *.mp3                   lfs
 *.ogg                   lfs
 *.s3m                   lfs
 *.wav                   lfs
