@@ -1,0 +1,12 @@
+# ninja log v5
+527	3116	7555636022070587	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	bac0e3be25bb1544
+3124	6167	7555636051472318	D:/Unity Projects/The Last Dissipation/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/5a68463m/obj/arm64-v8a/libswappywrapper.so	66f0cd1853745655
+102	7794	7555636068263619	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	7662acdde9198693
+212	7928	7555636070559722	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	be9cfce877190ae9
+280	8096	7555636072249078	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	9343c348e4b92ab2
+49	8187	7555636073140613	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	9d2dc10ef29d5185
+313	8288	7555636077591578	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	7593e13adc481e10
+2	8499	7555636080525637	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	eafd576f1f7e5af4
+132	9069	7555636087430307	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	569735d57d234b69
+28	9466	7555636091378523	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	66f0e3df230238a9
+9467	9735	7555636094053966	D:/Unity Projects/The Last Dissipation/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/5a68463m/obj/arm64-v8a/libgame.so	e3b5426be8f3d536
