@@ -1,0 +1,31 @@
+@startuml
+!theme cyborg
+
+package "Scripts" {
+    
+    package "Overworld" {
+        package "Managers" {
+            note "Overworld manager scripts" as om
+        }
+        package "Player" {
+            note "Player-related scripts" as p
+        }
+        package "UI" {
+            note "Overworld UI scripts" as oui
+        }
+        note "Overworld general scripts" as og
+    }
+
+    package "Stage" {
+        package "Managers" {
+            note "Stage manager scripts" as sm
+        }
+        package "UI" {
+            note "Stage UI scripts" as sui
+        }
+        note "Stage general scripts" as sg
+    }
+
+    note "General and auxiliary scripts" as g
+}
+@enduml

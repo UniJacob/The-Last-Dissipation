@@ -86,7 +86,7 @@ public class InputManagerOverworld : MonoBehaviour
                 }
                 lastScreenPosTouched = screenPosTouched;
                 UpdatePlayerDestination(screenPosTouched);
-                
+
             }
             //    case UnityEngine.InputSystem.TouchPhase.Began:
             //    case UnityEngine.InputSystem.TouchPhase.Moved:
