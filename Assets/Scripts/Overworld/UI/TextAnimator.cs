@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 
@@ -14,14 +11,19 @@ public class TextAnimator : MonoBehaviour
     [SerializeField] float timeBetweenChars = 0.03f;
     [SerializeField] WaitCursorBehavior SentenceEndCursor;
     [SerializeField] bool DialogOnStart = false;
-    [SerializeField] string StartDialogName = "start";
+    [SerializeField] string DialogFileName = "start";
 
     static TextAnimator instance;
     string[] sentences;
     int currentIndex = 0;
-    CancellationTokenSource currentAnimationCTS;
 
-    private void Awake()
+    // Animation state variables
+    private bool isAnimating = false;
+    private float stopper = 0f;
+    private int currentVisibleCount = 0;
+    private int totalVisibleCharacters = 0;
+
+    void Awake()
     {
         Auxiliary.AssureSingleton(ref instance, gameObject);
     }
@@ -30,7 +32,30 @@ public class TextAnimator : MonoBehaviour
     {
         if (DialogOnStart)
         {
-            StartDialog(OverworldState.DialogsMap[StartDialogName]);
+            StartDialog(OverworldState.DialogsMap[DialogFileName]);
+        }
+    }
+
+    void Update()
+    {
+        if (isAnimating)
+        {
+            stopper += Time.deltaTime;
+
+            // Check if it's time to show the next character
+            if (stopper >= timeBetweenChars)
+            {
+                stopper -= timeBetweenChars;
+                currentVisibleCount++;
+                DialogTextBox.maxVisibleCharacters = currentVisibleCount;
+
+                // Check if animation is complete
+                if (currentVisibleCount >= totalVisibleCharacters)
+                {
+                    isAnimating = false;
+                    SentenceEndCursor.SetActive2(true);
+                }
+            }
         }
     }
 
@@ -43,82 +68,57 @@ public class TextAnimator : MonoBehaviour
         OverworldState.InDialog = true;
         sentences = Auxiliary.TextAssetToSentences(ref Dialog);
         transform.gameObject.SetActive(true);
+        stopper = 0;
         AnimateSentence();
     }
 
     /// <summary>
-    /// Animates the next sentence (if available), with animation-cancelation handling.
+    /// Animates the next sentence (if available).
     /// </summary>
-    public async void AnimateSentence()
+    void AnimateSentence()
     {
-        currentAnimationCTS?.Cancel();
-        currentAnimationCTS?.Dispose();
         if (currentIndex <= sentences.Length - 1)
         {
             DialogTextBox.text = sentences[currentIndex++];
-            if (!OverworldState.WebGLCompatibility)
-            {
-                currentAnimationCTS = new CancellationTokenSource();
-                SentenceEndCursor.SetActive2(false);
-                try
-                {
-                    await AnimateTextAsync(currentAnimationCTS.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
-            }
-            SentenceEndCursor.SetActive2(true);
+            StartTextAnimation();
         }
         else
         {
             OverworldState.InDialog = false;
             TextPanel.SetActive(false);
         }
-
     }
 
     /// <summary>
-    /// Helper async function to animate the next sentence.
+    /// Starts the text animation for the current sentence.
     /// </summary>
-    /// <param name="cancellationToken">A CancellationToken that would be called if the animation stopped midway</param>
-    /// <returns>Task to be awaited</returns>
-    async Task AnimateTextAsync(CancellationToken cancellationToken)
+    void StartTextAnimation()
     {
         DialogTextBox.ForceMeshUpdate();
-        int totalVisibleCharacters = DialogTextBox.textInfo.characterCount;
+        totalVisibleCharacters = DialogTextBox.textInfo.characterCount;
+        currentVisibleCount = 0;
         DialogTextBox.maxVisibleCharacters = 0;
+        stopper = 0f;
 
-        for (int visibleCount = 0; visibleCount <= totalVisibleCharacters; visibleCount++)
+        SentenceEndCursor.SetActive2(false);
+        isAnimating = true;
+    }
+
+    /// <summary>
+    /// Instantly completes the current text animation.
+    /// </summary>
+    public void CompleteCurrentAnimation()
+    {
+        if (isAnimating)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            DialogTextBox.maxVisibleCharacters = visibleCount;
-            if (visibleCount < totalVisibleCharacters)
-            {
-                try
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(timeBetweenChars), cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    DialogTextBox.maxVisibleCharacters = totalVisibleCharacters;
-                    throw;
-                }
-            }
+            isAnimating = false;
+            DialogTextBox.maxVisibleCharacters = totalVisibleCharacters;
+            SentenceEndCursor.SetActive2(true);
         }
     }
 
     void OnDestroy()
     {
-        try
-        {
-            currentAnimationCTS?.Cancel();
-            currentAnimationCTS?.Dispose();
-        }
-        catch (ObjectDisposedException)
-        {
-            return;
-        }
+        isAnimating = false;
     }
 }

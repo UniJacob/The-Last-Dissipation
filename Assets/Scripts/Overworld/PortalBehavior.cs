@@ -8,6 +8,7 @@ public class PortalBehavior : MonoBehaviour
 {
     public string StageFileName;
     public string NewSceneName;
+    [SerializeField] SceneChanger SceneChanger;
 
     /// <summary>
     /// Perform relevant actions when the portal has been entered (by the player).
@@ -17,12 +18,14 @@ public class PortalBehavior : MonoBehaviour
         if (!string.IsNullOrEmpty(StageFileName))
         {
             StageState.StageFileName = StageFileName;
-            SceneManager.LoadScene(StageState.StageSceneName);
+            //SceneManager.LoadScene(StageState.StageSceneName);
+            SceneChanger.ChangeScene(StageState.StageSceneName);
             return;
         }
-        if (!string.IsNullOrEmpty(NewSceneName))
+        else if (!string.IsNullOrEmpty(NewSceneName))
         {
-            SceneManager.LoadScene(NewSceneName);
+            //SceneManager.LoadScene(NewSceneName);
+            SceneChanger.ChangeScene(NewSceneName);
             return;
         }
     }

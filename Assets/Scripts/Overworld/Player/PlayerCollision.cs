@@ -6,17 +6,12 @@ using UnityEngine;
 public class PlayerCollision : MonoBehaviour
 {
     /// <summary>
-    /// Handles player triggers, such as when it touches a portal.
+    /// Handles player triggers, such as when touching portals.
     /// </summary>
     /// <param name="other"></param>
-    private void OnTriggerEnter(Collider other)
+    void OnTriggerEnter(Collider other)
     {
         var go = other.gameObject;
-        //if (go.CompareTag(PortalTag))
-        //if (go.GetComponent<PortalBehavior>() != null)
-        //{
-        //    go.GetComponent<PortalBehavior>().Enter();
-        //}
         go.GetComponent<PortalBehavior>()?.Enter();
     }
 }
