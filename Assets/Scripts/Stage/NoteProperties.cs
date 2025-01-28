@@ -5,6 +5,9 @@ using UnityEngine;
 /// </summary>
 public class NoteProperties : MonoBehaviour
 {
+    static NoteProperties instance;
+    public static NoteProperties Instance { get { return instance; } }
+
     [SerializeField] public float DefaultSize = 2000, SpawnScaleMultiplier = 0.5f;
     [SerializeField] public float ScaleMultiplierWhenTapped = 1.2f;
     [SerializeField] public string MainNoteTag = "Main Note", TappedNoteTag = "Tapped Note";
@@ -22,15 +25,15 @@ public class NoteProperties : MonoBehaviour
     [HideInInspector] public float TappedScaleTime;
     [HideInInspector] public float FadeOutTime;
 
+    public float timeTillDestruction {  get; private set; }
+
     public float TappedAnimationScaleRate = 10;
     public float TappedInnerCircleGrowth = 0.66f;
     public float TappedInnerCircleAlpha = 0.5f;
 
-    static NoteProperties instance;
-
     void Awake()
     {
-        Auxiliary.AssureSingleton(ref instance, gameObject);
+        if (!Auxiliary.EnsureSingleton(ref instance, gameObject)) return;
     }
 
     /// <summary>
@@ -39,7 +42,7 @@ public class NoteProperties : MonoBehaviour
     /// <param name="SPB"> Seconds Per Beat </param> 
     public void SetPropertiesFromSPB(float SPB)
     {
-        float timeTillDestruction = SPB * 2; // Maximum time from Start() to Destroy() of notes
+        timeTillDestruction = SPB * 2; // Maximum time from Start() to Destroy() of notes
 
         ScaleInTime = ScaleInPortion * timeTillDestruction;
         FadeInTime = FadeInPortion * timeTillDestruction;

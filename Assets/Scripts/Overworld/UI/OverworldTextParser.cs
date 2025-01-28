@@ -7,18 +7,18 @@ using UnityEngine;
 /// </summary>
 public class OverworldTextParser : MonoBehaviour
 {
-    [SerializeField] string StoryTextsFolderName = "Story_Texts";
-    [Tooltip("Path from Resources/Story_Texts/")]
-    [SerializeField] string StageTxtsFolder = "Scene1 (Overworld1)";
+    [Tooltip("Path from 'Resources/Story_Texts/'.")]
+    [SerializeField] string CurrentDialogSubFolder = "IntroDialogs";
 
     static OverworldTextParser instance;
 
     void Awake()
     {
-        if (Auxiliary.AssureSingleton(ref instance, gameObject))
+        if (!Auxiliary.EnsureSingleton(ref instance, gameObject))
         {
-            LoadDialogs();
+            return;
         }
+        LoadDialogs();
     }
 
     /// <summary>
@@ -28,7 +28,7 @@ public class OverworldTextParser : MonoBehaviour
     /// <exception cref="Exception">If no texts are found</exception>
     void LoadDialogs()
     {
-        TextAsset[] DialogsAssets = Resources.LoadAll<TextAsset>(StoryTextsFolderName + "/" + StageTxtsFolder);
+        TextAsset[] DialogsAssets = Resources.LoadAll<TextAsset>("Story_Texts/" + CurrentDialogSubFolder);
         if (DialogsAssets == null || DialogsAssets.Length == 0)
         {
             throw new Exception($"No text files found");

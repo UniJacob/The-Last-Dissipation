@@ -24,6 +24,11 @@ public static class StageState
     /// </summary>
     public const int HorizontalUnits = 30;
 
+    ///// <summary>
+    ///// Whether to automatically tap notes in perfect timing when played in Unity's editor.
+    ///// </summary>
+    //public const bool AutoTapNotesInEditor = true;
+
 
     /* Screen size, "grid" and ratio related */
     /// <summary>
@@ -69,7 +74,7 @@ public static class StageState
     static float SpawnAreaWidth;
 
     /// <summary>
-    /// Width of the area where Note objects can spawn in (world units).
+    /// Height of the area where Note objects can spawn in (world units).
     /// </summary>
     public static float SpawnAreaHeight { get; private set; }
 
@@ -82,6 +87,8 @@ public static class StageState
     /* File parsing related */
     public static string StageFileName = "tst";
 
+    public static string StageDifficultyLevel = "difficulty";
+
     /// <summary>
     /// Path from Resources folder to the folder where stage-text files are saved.
     /// </summary>
@@ -91,6 +98,16 @@ public static class StageState
     /// Path from Resources folder to the folder where stage-audio files are saved.
     /// </summary>
     public const string AudiosPath = "Stage_Audios/";
+
+    /// <summary>
+    /// Path from Resources folder to the folder where stage-image files are saved.
+    /// </summary>
+    public const string StageImagesPath = "Stage_Images/";
+
+    /// <summary>
+    /// Path from Resources folder to the folder where stage-thumbnail files are saved.
+    /// </summary>
+    public const string StageThumbnailsPath = "Stage_Images/Stage_Thumbnails/";
 
     /// <summary>
     /// Regular expressions for parsing stage files.
@@ -111,7 +128,7 @@ public static class StageState
     /// <summary>
     /// Music clip of the current stage.
     /// </summary>
-    public static AudioClip MusicClip { get; private set; }
+    public static AudioClip MusicClip { get; private set; } = null;
 
     /// <summary>
     ///  Beats per minute,
@@ -129,10 +146,37 @@ public static class StageState
     public static float SPB { get; private set; }
 
     /// <summary>
+    /// Speed of the bar (units per second);
+    /// </summary>
+    public static float BarSpeed { get; private set; }
+
+    /// <summary>
     /// Whether the stage is paused.
     /// </summary>
     public static bool IsPaused = false;
 
+    /// <summary>
+    /// Whether the stage has ended.
+    /// </summary>
+    public static bool IsEnded = false;
+
+    /// <summary>
+    /// Background image of the current stage.
+    /// </summary>
+    public static Sprite BackgroundImage = null;
+
+    /// <summary>
+    /// BPM coefficient of the stage. For example, if it is set to 2 then the bar
+    /// will move twice as slow but Notes will spawn twice as fast.
+    /// </summary>
+    public static int StageSpeedCoefficient = 1;
+
+    /// <summary>
+    /// Whether the Adjust Music Delay stage is currently played.
+    /// </summary>
+    public static bool InAdjustDelayMode = false;
+
+    /* Functions */
     /// <summary>
     /// Sets various stage parameters according to the size of the screen shown by a given camera.
     /// Also requires a NoteProperties for assuring Notes won't be partially hidden by screen bounds and menus.
@@ -158,13 +202,13 @@ public static class StageState
         SpawnAreaWidth = SpawnAreaTR.x - SpawnAreaBL.x;
         SpawnAreaHeight = SpawnAreaTR.y - SpawnAreaBL.y;
 
-        UnitsPerHorUnit = SpawnAreaWidth / StageState.HorizontalUnits;
+        UnitsPerHorUnit = SpawnAreaWidth / HorizontalUnits;
     }
 
     /// <summary>
     /// Loads a stage-text '.txt' file (or "stage file" for short) and adjusts various class variables.
     /// </summary>
-    public static void LoadStageFile()
+    public static void LoadStageFile(int stageSpeedCoefficient)
     {
         var tmp = TxtsPath + StageFileName;
         TextAsset StageFile = Resources.Load(tmp) as TextAsset;
@@ -173,20 +217,22 @@ public static class StageState
             throw new Exception($"Stage file not found at Resources/{tmp}");
         }
         StageTextLines = StageFile.text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-        for (int i = 0; i < StageTextLines.Length; ++i)
+        for (int i = 2; i < StageTextLines.Length; ++i)
         {
             if (StageTextLines[i].Contains(' '))
             {
                 StageTextLines[i] = StageTextLines[i].Substring(0, StageTextLines[i].IndexOf(' '));
             }
         }
-        SetBPM();
+        SetBPM(stageSpeedCoefficient);
         SetMusicClip();
+        BarSpeed = SpawnAreaHeight * BPS;
     }
 
-    static void SetBPM()
+    static void SetBPM(int stageSpeedCoefficient)
     {
         BPM = float.Parse(StageTextLines[0]);
+        BPM /= stageSpeedCoefficient;
         BPS = BPM / 60;
         SPB = 1 / BPS;
     }

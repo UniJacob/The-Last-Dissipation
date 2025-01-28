@@ -6,11 +6,15 @@ using UnityEngine;
 /// </summary>
 public class NoteBehavior : MonoBehaviour
 {
-    [SerializeField] NoteProperties NoteProperties;
-    [SerializeField] ScoreManager ScoreManager;
     [SerializeField] Collider2D NoteCollider;
     [SerializeField] SpriteRenderer MainSpriteRenderer;
     [SerializeField] SpriteRenderer TappedSpriteRenderer;
+    [SerializeField] ParticleSystem Ring;
+    [SerializeField] Color[] OuterRingColors;
+    float[] durations;
+
+    NoteProperties NoteP;
+    ScoreManager ScoreM;
 
     /* Note Animation */
     bool WasTapped = false;
@@ -21,6 +25,8 @@ public class NoteBehavior : MonoBehaviour
     float ScaleWhenTapped = 0;
     readonly Dictionary<string, Transform> TransformsMap = new Dictionary<string, Transform>();
     SpriteRenderer[] spriteRenderers;
+    float outerRingColorStopwatch = 0;
+    int currentIndex = 0;
 
     /* Note Lifetime Timers */
     float TimeAtActivation = -1;
@@ -33,31 +39,139 @@ public class NoteBehavior : MonoBehaviour
     /* Timing/Score Related */
     float TimeAtPerfect;
     bool scoreCalculated = false;
+    enum Grade { None, Miss, Bad, Good, Perfect };
+    static Dictionary<Grade, int> GradeColorDict = new() {
+    { Grade.None, -1 },{ Grade.Miss, 0 },{ Grade.Bad, 1 },{ Grade.Good, 2 },{ Grade.Perfect, 3 }};
 
     /* Debug */
+    [SerializeField] bool AutoTapNotesInEditor = false;
     public static float LastFullGrownTime = 0;
 
     void Start()
     {
+        NoteP = NoteProperties.Instance;
+        ScoreM = ScoreManager.Instance;
+
         spriteRenderers = GetComponentsInChildren<SpriteRenderer>();
         foreach (Transform child in transform)
         {
-            if (child.CompareTag(NoteProperties.TappedNoteTag))
+            if (child.CompareTag(NoteP.TappedNoteTag))
             {
-                TransformsMap.Add(NoteProperties.TappedNoteTag, child);
+                TransformsMap.Add(NoteP.TappedNoteTag, child);
             }
         }
         SetInitialScale();
-        SetAlpha(0, NoteProperties.MainNoteTag);
+        SetAlpha(0, NoteP.MainNoteTag);
         SetTimers();
+        SetOuterRingDurations();
     }
+
+    void SetOuterRingDurations()
+    {
+        var timeTillPerfect1 = NoteP.FadeInTime + NoteP.ScaleInTime - ScoreM.PerfectThreshold;
+        var timeTillPerfect2 = NoteP.FadeInTime + NoteP.ScaleInTime + ScoreM.PerfectThreshold;
+        var timeTillGood1 = timeTillPerfect1 - ScoreM.GoodThreshold;
+        var timeTillGood2 = timeTillPerfect2 + ScoreM.GoodThreshold;
+
+        durations = new float[] {
+            timeTillGood1/2,
+            timeTillGood1,
+            timeTillPerfect1,
+            timeTillGood2,
+            (timeTillGood2 + NoteP.timeTillDestruction)/2,
+            NoteP.timeTillDestruction };
+    }
+
+    void Update()
+    {
+        if (ToDestroy)
+        {
+            CalcNoteGrade(-1);
+            Destroy(gameObject);
+            return;
+        }
+
+        FadeInTimer -= Time.deltaTime;
+        ScaleInTimer -= Time.deltaTime;
+
+        if (!WasMissed && !WasTapped)
+        {
+            if (MissedStopper >= TimeBeforeMissed)
+            {
+                WasMissed = true;
+            }
+            else
+            {
+                MissedStopper += Time.deltaTime;
+            }
+        }
+
+        if (WasTapped)
+        {
+            TappedRoutine();
+            return;
+        }
+        if (WasMissed)
+        {
+            FadeOutTimer -= Time.deltaTime;
+            bool FinishedFadingOut = GradualFade3(0, FadeOutTimer, GetComponent<SpriteRenderer>());
+            if (FinishedFadingOut)
+            {
+                ToDestroy = true;
+            }
+            return;
+        }
+        if (IsFadingIn)
+        {
+            bool FinishedFadingIn = GradualFade3(1, FadeInTimer, GetComponent<SpriteRenderer>());
+            IsFadingIn = !FinishedFadingIn;
+            IsScalingIn = FinishedFadingIn;
+        }
+        if (IsScalingIn)
+        {
+            bool FinishedScalingIn = GradualGrow2(NoteP.DefaultSize, ScaleInTimer, transform);
+            IsScalingIn = !FinishedScalingIn;
+            if (FinishedScalingIn)
+            {
+                MainSpriteRenderer.color = Color.green;
+                //if (StageState.AutoTapNotesInEditor && Application.isEditor)
+                if (AutoTapNotesInEditor && Application.isEditor)
+                {
+                    WasTapped = true;
+                }
+            }
+        }
+        ColorOuterRing();
+    }
+
+    void ColorOuterRing()
+    {
+        while (outerRingColorStopwatch > durations[currentIndex])
+        {
+            if (currentIndex >= durations.Length)
+            {
+                return;
+            }
+            ++currentIndex;
+        }
+        float normalizedTime =
+            (1 - (durations[currentIndex] - outerRingColorStopwatch)) / durations[currentIndex];
+        GetComponent<SpriteRenderer>().color =
+            Color.Lerp(
+                OuterRingColors[currentIndex],
+                OuterRingColors[Mathf.Min(currentIndex + 1, durations.Length - 1)],
+                normalizedTime);
+
+        outerRingColorStopwatch += Time.deltaTime;
+    }
+
 
     /// <summary>
     /// Sets the Note initial scale (usually smaller than normal).
     /// </summary>
     void SetInitialScale()
     {
-        float initialScale = NoteProperties.DefaultSize * NoteProperties.SpawnScaleMultiplier;
+        float initialScale = NoteP.DefaultSize * NoteP.SpawnScaleMultiplier;
         transform.localScale = new(initialScale, initialScale, 1);
     }
 
@@ -84,14 +198,14 @@ public class NoteBehavior : MonoBehaviour
     /// </summary>
     void SetTimers()
     {
-        FadeInTimer = NoteProperties.FadeInTime;
-        ScaleInTimer = NoteProperties.ScaleInTime + FadeInTimer;
+        FadeInTimer = NoteP.FadeInTime;
+        ScaleInTimer = NoteP.ScaleInTime + NoteP.FadeInTime;
         //MainLifeTimer = NP.MainLifeTime;
-        TappedScaleTimer = NoteProperties.TappedScaleTime;
-        FadeOutTimer = NoteProperties.FadeOutTime;
+        TappedScaleTimer = NoteP.TappedScaleTime;
+        FadeOutTimer = NoteP.FadeOutTime;
 
-        TimeBeforeMissed = NoteProperties.MainLifeTime + NoteProperties.FadeInTime + NoteProperties.ScaleInTime;
-        TimeAtPerfect = TimeAtActivation + ScaleInTimer;
+        TimeBeforeMissed = NoteP.MainLifeTime + NoteP.FadeInTime + NoteP.ScaleInTime;
+        TimeAtPerfect = TimeAtActivation + NoteP.ScaleInTime + NoteP.FadeInTime;
 
         if (TimeAtActivation > 0)
         {
@@ -102,163 +216,36 @@ public class NoteBehavior : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        FadeInTimer -= Time.deltaTime;
-        ScaleInTimer -= Time.deltaTime;
-
-        if (!WasMissed && !WasTapped)
-        {
-            if (MissedStopper >= TimeBeforeMissed)
-            {
-                WasMissed = true;
-            }
-            else
-            {
-                MissedStopper += Time.deltaTime;
-            }
-        }
-
-        if (ToDestroy)
-        {
-            CalcNoteScore(-1);
-            Destroy(gameObject);
-            return;
-        }
-
-        if (WasTapped)
-        {
-            TappedRoutine();
-        }
-        else if (WasMissed)
-        {
-            FadeOutTimer -= Time.deltaTime;
-            if (!GradualFade3(0, FadeOutTimer, GetComponent<SpriteRenderer>()))
-            {
-                ToDestroy = true;
-            }
-        }
-        else if (IsFadingIn)
-        {
-            IsFadingIn = GradualFade3(1, FadeInTimer, GetComponent<SpriteRenderer>());
-            IsScalingIn = !IsFadingIn;
-        }
-        if (IsScalingIn)
-        {
-            IsScalingIn = GradualGrow2(NoteProperties.DefaultSize, ScaleInTimer, transform);
-            if (!IsScalingIn)
-            {
-                MainSpriteRenderer.color = Color.green;
-            }
-        }
-    }
-
-    //private bool GradualFade(float targetAlpha, float fadeRate, string tag)
-    //{
-    //    bool ans = true;
-    //    SpriteRenderer tmp = spriteRenderers[0];
-    //    int i = 1;
-    //    while (!tmp.CompareTag(tag))
-    //    {
-    //        tmp = spriteRenderers[i++];
-    //    }
-    //    Color tmpCol = tmp.color;
-    //    float alphaToAdd = fadeRate * Time.deltaTime;
-    //    float newAlpha;
-    //    if (tmpCol.a < targetAlpha)
-    //    {
-    //        newAlpha = tmpCol.a + alphaToAdd;
-    //        if (newAlpha >= targetAlpha)
-    //        {
-    //            newAlpha = targetAlpha;
-    //            ans = false;
-    //        }
-    //    }
-    //    else
-    //    {
-    //        newAlpha = tmpCol.a - alphaToAdd;
-    //        if (newAlpha <= targetAlpha)
-    //        {
-    //            newAlpha = targetAlpha;
-    //            ans = false;
-    //        }
-    //    }
-    //    SetAlpha(newAlpha, tag);
-    //    return ans;
-    //}
-
-
-    //private bool GradualFade2(float targetAlpha, float timeLeft, string tag)
-    //{
-    //    bool ans = true;
-    //    SpriteRenderer CurrSprite = spriteRenderers[0];
-    //    int i = 1;
-    //    while (!CurrSprite.CompareTag(tag))
-    //    {
-    //        CurrSprite = spriteRenderers[i++];
-    //    }
-    //    Color CurrCol = CurrSprite.color;
-    //    bool FadeIn = CurrCol.a < targetAlpha;
-    //    float fadeRate;
-    //    if (timeLeft <= 0)
-    //    {
-    //        fadeRate = FadeIn ? 1 : -1;
-    //    }
-    //    else
-    //    {
-    //        fadeRate = (targetAlpha - CurrSprite.color.a) / timeLeft;
-    //    }
-    //    float alphaToAdd = fadeRate * Time.deltaTime;
-    //    float newAlpha = CurrCol.a + alphaToAdd;
-    //    if (FadeIn)
-    //    {
-    //        if (newAlpha >= targetAlpha)
-    //        {
-    //            newAlpha = targetAlpha;
-    //            ans = false;
-    //        }
-    //    }
-    //    else
-    //    {
-    //        if (newAlpha <= targetAlpha)
-    //        {
-    //            newAlpha = targetAlpha;
-    //            ans = false;
-    //        }
-    //    }
-    //    SetAlpha(newAlpha, tag);
-    //    return ans;
-    //}
-
     /// <summary>
-    /// Slightly reduces or raise the alpha value of a given SpriteRenderer, depending on a given target alpha value.
+    /// Slightly reduces or raises the alpha value of a given SpriteRenderer, depending on a given target alpha value.
     /// </summary>
     /// <param name="targetAlpha">Alpha value to aim for</param>
-    /// <param name="timeLeft">Time left to change the alpha such that when it reaches 0 the alpha value will be targetAlpha</param>
+    /// <param name="timeLeft">When this reaches 0 the alpha value will be targetAlpha</param>
     /// <param name="sr">SpriteRenderer to change alpha for</param>
     /// <returns>True if sr's alpha value reached targetAlpha, false otherwise.</returns>
     private bool GradualFade3(float targetAlpha, float timeLeft, SpriteRenderer sr)
     {
-        bool ans = true;
+        bool ans = false;
         Color CurrCol = sr.color;
         bool FadeIn = CurrCol.a < targetAlpha;
-        float fadeRate;
+        float alphaToAdd;
         if (timeLeft <= 0)
         {
-            fadeRate = FadeIn ? 1 : -1;
+            alphaToAdd = FadeIn ? 1 : -1;
         }
         else
         {
-            fadeRate = (targetAlpha - CurrCol.a) / timeLeft;
+            float fadeRate = (targetAlpha - CurrCol.a) / timeLeft;
+            alphaToAdd = fadeRate * Time.deltaTime;
         }
-        float alphaToAdd = fadeRate * Time.deltaTime;
+        //float alphaToAdd = fadeRate * Time.deltaTime;
         float newAlpha = CurrCol.a + alphaToAdd;
         if (FadeIn)
         {
             if (newAlpha >= targetAlpha)
             {
                 newAlpha = targetAlpha;
-                ans = false;
+                ans = true;
             }
         }
         else
@@ -266,7 +253,7 @@ public class NoteBehavior : MonoBehaviour
             if (newAlpha <= targetAlpha)
             {
                 newAlpha = targetAlpha;
-                ans = false;
+                ans = true;
             }
         }
         SetAlpha(newAlpha, tag);
@@ -282,13 +269,13 @@ public class NoteBehavior : MonoBehaviour
     /// <returns>>True if tr's scale value reached targetScale, false otherwise.</returns>
     private bool GradualGrow(float targetScale, float scaleRate, Transform tr)
     {
-        bool ans = true;
+        bool ans = false;
         float scaleToAdd = targetScale * scaleRate * Time.deltaTime;
         float newScale = tr.localScale.x + scaleToAdd;
         if (newScale >= targetScale)
         {
             newScale = targetScale;
-            ans = false;
+            ans = true;
         }
         tr.localScale = new Vector3(newScale, newScale, 1);
 
@@ -304,7 +291,7 @@ public class NoteBehavior : MonoBehaviour
     /// <returns>True if sr's scale value reached targetScale, false otherwise.</returns>
     private bool GradualGrow2(float targetScale, float timeLeft, Transform tr)
     {
-        bool ans = true;
+        bool ans = false;
         float currScale = tr.localScale.x;
         float scaleRate = timeLeft > 0 ? ((targetScale - currScale) / timeLeft) : targetScale;
         float scaleToAdd = scaleRate * Time.deltaTime;
@@ -312,33 +299,12 @@ public class NoteBehavior : MonoBehaviour
         if (newScale >= targetScale)
         {
             newScale = targetScale;
-            ans = false;
+            ans = true;
         }
         tr.localScale = new Vector3(newScale, newScale, 1);
 
         return ans;
     }
-
-    //private void GradualTappedDestroy()
-    //{
-    //    float maxScale = ScaleWhenTapped * NoteProperties.ScaleMultiplierWhenTapped;
-    //    if (IsScalingOut)
-    //    {
-    //        IsScalingOut = GradualGrow2(maxScale, TappedScaleTimer, transform) ||
-    //            GradualGrow2(NoteProperties.TappedInnerCircleGrowth,
-    //                        TappedScaleTimer,
-    //                        TransformsMap[NoteProperties.TappedNoteTag]); //TODO maybe remove map
-    //    }
-    //    else if (IsFadingOut)
-    //    {
-    //        IsFadingOut = GradualFade3(0, FadeOutTimer, MainSpriteRenderer) ||
-    //            GradualFade3(0, FadeOutTimer, TappedSpriteRenderer);
-    //    }
-    //    else
-    //    {
-    //        ToDestroy = true;
-    //    }
-    //}
 
     /// <summary>
     /// Controls what happens when the note is considered "tapped", up until right before its destruction.
@@ -347,64 +313,84 @@ public class NoteBehavior : MonoBehaviour
     {
         if (ScaleWhenTapped == 0)
         {
-            CalcNoteScore(Time.time);
+            var grade = CalcNoteGrade(Time.time);
             IsFadingIn = false;
             IsScalingIn = false;
             IsScalingOut = true;
             IsFadingOut = true;
-            SetAlpha(NoteProperties.TappedInnerCircleAlpha, NoteProperties.TappedNoteTag);
-            FadeOutTimer = NoteProperties.FadeOutTime;
+            SetAlpha(NoteP.TappedInnerCircleAlpha, NoteP.TappedNoteTag);
+            FadeOutTimer = NoteP.FadeOutTime;
             ScaleWhenTapped = transform.localScale.x;
+
+            if (GradeColorDict[grade] > 0)
+            {
+                var tmp = Ring.main;
+                //int nextIndex = Mathf.Min(currentIndex + 1, durations.Length - 1);
+                //var v1 = Mathf.Abs(durations[currentIndex] - outerRingColorStopwatch);
+                //var v2 = Mathf.Abs(durations[nextIndex] - outerRingColorStopwatch);
+                //if (v1 < v2)
+                //{
+                //    tmp.startColor = OuterRingColors[currentIndex];
+                //}
+                //else
+                //{
+                //    tmp.startColor = OuterRingColors[nextIndex];
+                //}
+                tmp.startColor = OuterRingColors[GradeColorDict[grade]];
+                Ring.Play();
+            }
         }
 
-        float maxScale = ScaleWhenTapped * NoteProperties.ScaleMultiplierWhenTapped;
+        float maxScale = ScaleWhenTapped * NoteP.ScaleMultiplierWhenTapped;
         if (IsScalingOut)
         {
             TappedScaleTimer -= Time.deltaTime;
-            bool sc1 = GradualGrow2(maxScale, TappedScaleTimer, transform);
-            var tmp = TransformsMap[NoteProperties.TappedNoteTag];
-            bool sc2 = GradualGrow(NoteProperties.TappedInnerCircleGrowth,
-                           NoteProperties.TappedAnimationScaleRate,
+            bool FinishedScalingOut1 = GradualGrow2(maxScale, TappedScaleTimer, transform);
+            var tmp = TransformsMap[NoteP.TappedNoteTag];
+            bool FinishedScalingOut2 = GradualGrow(NoteP.TappedInnerCircleGrowth,
+                           NoteP.TappedAnimationScaleRate,
                            tmp);
-            IsScalingOut = sc1 || sc2;
+            IsScalingOut = !FinishedScalingOut1 || !FinishedScalingOut2;
         }
         if (IsFadingOut)
         {
             FadeOutTimer -= Time.deltaTime;
-            IsFadingOut = GradualFade3(0, FadeOutTimer, GetComponent<SpriteRenderer>());
+            bool FinishedFadingOut = GradualFade3(0, FadeOutTimer, GetComponent<SpriteRenderer>());
+            IsFadingOut = !FinishedFadingOut;
         }
-        else if (!IsScalingOut && !IsFadingOut)
+        if (!IsScalingOut && !IsFadingOut)
         {
             ToDestroy = true;
         }
     }
 
     /// <summary>
-    /// Calculates the score the player got from tapping on this note at a given time, and updates ScoreManager accordingly.
+    /// Calculates the grade the player got from tapping on this note at a given time, 
+    /// and updates ScoreManager accordingly.
     /// </summary>
     /// <param name="TappedTime">Given time at which the player has tapped the note</param>
-    void CalcNoteScore(float TappedTime)
+    Grade CalcNoteGrade(float TappedTime)
     {
-        if (scoreCalculated) return;
+        if (scoreCalculated) return Grade.None;
         scoreCalculated = true;
         if (TappedTime < 0)
         {
-            ScoreManager.AddMiss();
-            return;
+            ScoreM.AddMiss();
+            return Grade.Miss;
         }
         float timeDiff = Mathf.Abs(TappedTime - TimeAtPerfect);
-        if (timeDiff <= ScoreManager.PerfectThreshold)
+        if (timeDiff <= ScoreM.PerfectThreshold)
         {
-            ScoreManager.AddPerfect();
+            ScoreM.AddPerfect();
+            return Grade.Perfect;
         }
-        else if (timeDiff <= ScoreManager.GoodThreshold)
+        if (timeDiff <= ScoreM.GoodThreshold)
         {
-            ScoreManager.AddGood();
+            ScoreM.AddGood();
+            return Grade.Good;
         }
-        else
-        {
-            ScoreManager.AddBad();
-        }
+        ScoreM.AddBad();
+        return Grade.Bad;
     }
 
     /// <summary>

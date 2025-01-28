@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// A singleton script responsible for many aspects regarding stage management.
@@ -16,11 +17,11 @@ public class StageManager : MonoBehaviour
     [SerializeField] BarBehavior Bar;
     [SerializeField] NoteProperties NoteProperties;
     [SerializeField] ScoreManager ScoreManager;
-    [SerializeField] ButtonManager ButtonManager;
+    [SerializeField] MenuManagerStage MenuManager;
     [SerializeField] NoteSpawner NoteSpawner;
     [SerializeField] AudioSource MusicPlayer;
     [SerializeField] HUDTextSetter HUDTextSetter;
-
+    [SerializeField] Image BackgroundImage;
     [Tooltip("How many seconds to wait after the music ends before showing the stage summary menu.")]
     [SerializeField] float ExtraMusicTimerTime = 1;
 
@@ -40,44 +41,66 @@ public class StageManager : MonoBehaviour
     int NotesZ_val;
     bool up;
     float MusicTimer;
-    bool stopped = false;
+    bool stopped;
+    float musicPlayDelayStopwatch;
+    float musicPlayDelay;
 
-    public readonly int _debug = 1;
+    [Tooltip("If greater than 0, debug logs will be enabled")]
+    public int _DebugLog = 1;
 
 
     public void Awake()
     {
-        if (!Auxiliary.AssureSingleton(ref instance, gameObject))
+        if (!Auxiliary.EnsureSingleton(ref instance, gameObject))
         {
             return;
         }
 
-        LimitFrames();
-        //SetStageAreaParameters();
+        Application.targetFrameRate = StageState.FrameCap;
         StageState.SetWorldSpaceParameters(ref MainCamera, ref NoteProperties);
-        if (_debug > 0)
+        if (_DebugLog > 1)
         {
             Debug.Log($"Screen size: {StageState.ScreenBL}, {StageState.ScreenTR}");
             Debug.Log($"Spawn area size: {StageState.SpawnAreaBL}, {StageState.SpawnAreaTR}");
         }
-        StageState.LoadStageFile();
-        if (_debug > 0)
-            Debug.Log("Stage file loaded");
-        MusicPlayer.clip = StageState.MusicClip;
-        if (_debug > 0)
-            Debug.Log("Music file loaded");
+        LoadStageFile();
         ResetTrackers();
-        LoadNotes();
-        if (_debug > 0)
-            Debug.Log("Stage notes loaded");
         NoteProperties.SetPropertiesFromSPB(StageState.SPB);
-        if (_debug > 0)
+        if (_DebugLog > 0)
             Debug.Log($"Note properties updated to match {StageState.BPM} BPM");
+        SetBackgroundImage();
+        AdjustMusicDelay();
+        LoadNotes();
+        if (_DebugLog > 0)
+            Debug.Log("Stage notes loaded");
     }
 
-    void LimitFrames()
+    void Update()
     {
-        Application.targetFrameRate = StageState.FrameCap;
+        if (stopped) return;
+        if (MusicPlayer.clip == null) return;
+
+        if (musicPlayDelayStopwatch < musicPlayDelay)
+        {
+            musicPlayDelayStopwatch += Time.deltaTime;
+            if (musicPlayDelayStopwatch >= musicPlayDelay)
+            {
+                PlayMusic(musicPlayDelayStopwatch - musicPlayDelay);
+            }
+            return;
+        }
+        MusicTimer -= Time.deltaTime;
+        if (MusicTimer <= 0)
+        {
+            if (StageState.InAdjustDelayMode)
+            {
+                Restart();
+            }
+            else
+            {
+                EndStage();
+            }
+        }
     }
 
     void SetCamera() // Not used for now
@@ -109,18 +132,21 @@ public class StageManager : MonoBehaviour
     void ResetTrackers()
     {
         NotesCounter1 = 0;
-        currentVerticalPos = 0;
+        currentVerticalPos = StageState.SpawnAreaHeight / 2;
         NotesZ_val = 0;
-        up = true;
+        up = false;
         if (MusicPlayer.clip != null)
         {
-            MusicTimer = MusicPlayer.clip.length + ExtraMusicTimerTime;
+            MusicTimer = MusicPlayer.clip.length + ExtraMusicTimerTime + Mathf.Abs(GameState.StageMusicDelay);
         }
+        stopped = false;
+        musicPlayDelayStopwatch = 0;
     }
 
     /// <summary>
     /// Loads all Note objects of the stage.
     /// </summary>
+    /// <param name="stageSpeedCoefficient">BPM coefficient of the stage</param>
     void LoadNotes()
     {
         Notes = new GameObject[StageState.StageTextLines.Length - 1][];
@@ -128,7 +154,12 @@ public class StageManager : MonoBehaviour
         for (int i = 2; i < StageState.StageTextLines.Length - 1; ++i)
         {
             var spawn_tuple = ParseLine(StageState.StageTextLines[i]);
-            InstantiateNotes(spawn_tuple.Item1, spawn_tuple.Item2, spawn_tuple.Item3);
+            if (spawn_tuple == null)
+            {
+                continue;
+            }
+            InstantiateNotes(spawn_tuple.Item1 * StageState.StageSpeedCoefficient,
+                spawn_tuple.Item2, spawn_tuple.Item3);
             ++NotesCounter1;
         }
     }
@@ -153,6 +184,10 @@ public class StageManager : MonoBehaviour
         }
         if (match == null)
         {
+            if (line == "")
+            {
+                return null;
+            }
             throw new Exception($"The line '{line}' in the stage file {StageState.StageFileName} does not match any known pattern");
         }
 
@@ -160,7 +195,7 @@ public class StageManager : MonoBehaviour
         List<int> posList = ParseIntegerList(match.Groups["shortNotes"].Value);
         List<int> longPosList = ParseIntegerList(match.Groups["longNotes"].Value);
 
-        if (_debug > 1)
+        if (_DebugLog > 1)
         {
             string tmp = $"{weight}-weight\n";
             if (posList != null)
@@ -203,7 +238,8 @@ public class StageManager : MonoBehaviour
     /// <param name="weight">Musical weight of the notes</param>
     /// <param name="shortNotesPositions">'Short' Note objects to instantiates</param>
     /// <param name="longNotesPositions">'Long' Note objects to instantiates</param>                // Currently not implemented
-    void InstantiateNotes(int weight, List<int> shortNotesPositions = null, List<int> longNotesPositions = null)
+    void InstantiateNotes(int weight, List<int> shortNotesPositions = null,
+        List<int> longNotesPositions = null)
     {
         if (shortNotesPositions != null)
         {
@@ -213,7 +249,6 @@ public class StageManager : MonoBehaviour
             {
                 Vector3 spawnPosition = new Vector3(
                     position * StageState.UnitsPerHorUnit,
-                    //currentVerUnit * UnitsPerVerUnit,
                     currentVerticalPos,
                     NotesZ_val++);
                 Notes[NotesCounter1][NotesCounter2] = Instantiate(NotePrefab, spawnPosition, Quaternion.identity);
@@ -236,24 +271,15 @@ public class StageManager : MonoBehaviour
         Weights[NotesCounter1] = weight;
     }
 
-    public void PlayMusic(float MusicStartDelay)
+    /// <summary>
+    /// Starts playing the music track of the stage.
+    /// </summary>
+    /// <param name="playbackTime">Time in seconds from which to start the playback.</param>
+    void PlayMusic(float playbackTime)
     {
         if (MusicPlayer.clip == null) return;
-        MusicPlayer.time = MusicStartDelay;
+        MusicPlayer.time = playbackTime;
         MusicPlayer.Play();
-    }
-
-    void Update()
-    {
-        if (stopped) return;
-        if (MusicPlayer.clip != null)
-        {
-            MusicTimer -= Time.deltaTime;
-            if (MusicTimer <= 0)
-            {
-                EndStage();
-            }
-        }
     }
 
     /// <summary>
@@ -263,7 +289,9 @@ public class StageManager : MonoBehaviour
     {
         StopStage();
         HUDTextSetter.UpdateScoreTrackers();
-        ButtonManager.PartialEndStage();
+        MenuManager.PartialEndStage();
+        StageState.IsEnded = true;
+        UpdateHighscore();
     }
 
     void StopStage()
@@ -281,21 +309,57 @@ public class StageManager : MonoBehaviour
     /// <summary>
     /// Restarts the stage.
     /// </summary>
-    public void Restart()
+    /// <param name="hardRestart">If true will reload the stage file and 
+    /// re-adjust music playback delay.</param>
+    public void Restart(bool hardRestart = false)
     {
         if (!stopped)
         {
             StopStage();
         }
+        if (hardRestart)
+        {
+            LoadStageFile();
+            AdjustMusicDelay();
+        }
         ScoreManager.Restart();
         ResetTrackers();
         LoadNotes();
-        stopped = false;
-        ButtonManager.Start();
+        MenuManager.Restart();
         NoteSpawner.Restart();
         Bar.Restart();
-        if (_debug > 0)
+        HUDTextSetter.Restart();
+        StageState.IsEnded = false;
+        if (_DebugLog > 0)
             Debug.Log("Stage restarted");
+    }
+
+    /// <summary>
+    /// Loads the stage file that is referenced in StageState.
+    /// </summary>
+    void LoadStageFile()
+    {
+        StageState.LoadStageFile(StageState.StageSpeedCoefficient);
+        if (_DebugLog > 0)
+            Debug.Log("Stage file loaded");
+        MusicPlayer.clip = StageState.MusicClip;
+        MusicPlayer.clip?.LoadAudioData();
+        if (_DebugLog > 0)
+            Debug.Log("Music file loaded");
+    }
+
+    public void Quit()
+    {
+        if (!stopped)
+        {
+            StopStage();
+        }
+        if (_DebugLog > 0)
+        {
+            Debug.Log("Quitting Stage");
+        }
+        StageState.InAdjustDelayMode = false;
+        SceneChanger.instance.StartSceneChange(GameState.LastOverworldSceneName);
     }
 
     /// <summary>
@@ -317,6 +381,54 @@ public class StageManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// Updates the highscore of the stage in needed.
+    /// </summary>
+    void UpdateHighscore()
+    {
+        float currentScore = ScoreManager.GetFinalScore();
+        if (GameState.HighscoresMap.ContainsKey(StageState.StageFileName))
+        {
+            if (currentScore <= GameState.HighscoresMap[StageState.StageFileName])
+            {
+                return;
+            }
+        }
+        GameState.HighscoresMap[StageState.StageFileName] = currentScore;
+        GameState.SaveGameState();
+    }
+
+    void AdjustMusicDelay()
+    {
+        musicPlayDelay = StageState.SPB / 2 + NoteProperties.ScaleInTime + NoteProperties.FadeInTime;
+        if (GameState.StageMusicDelay > 0)
+        {
+            musicPlayDelay += GameState.StageMusicDelay;
+        }
+    }
+
+    void SetBackgroundImage()
+    {
+        if (StageState.BackgroundImage != null)
+        {
+            BackgroundImage.sprite = StageState.BackgroundImage;
+        }
+        var aspectRatioFitter = BackgroundImage.gameObject.GetComponent<AspectRatioFitter>();
+        if (aspectRatioFitter != null)
+        {
+            if (StageState.InAdjustDelayMode)
+            {
+                aspectRatioFitter.aspectRatio = (float)16 / 9;
+                Debug.Log("AYO WTF");
+            }
+            else
+            {
+                aspectRatioFitter.aspectRatio = (float)Screen.width / Screen.height;
+            }
+        }
+    }
+
 
     private void OnDrawGizmos()
     {

@@ -1,0 +1,4 @@
+Accelerating = 6
+Eternal = 1
+Fluctuating = 7
+Beginning = 1

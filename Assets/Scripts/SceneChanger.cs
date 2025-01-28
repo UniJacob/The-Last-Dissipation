@@ -12,16 +12,17 @@ public class SceneChanger : MonoBehaviour
     [SerializeField] float BlackScreenFadeOutTime = 1;
     [SerializeField] Color BlackScreenColor = Color.black;
 
-    static SceneChanger instance;
+    public static SceneChanger instance;
+    bool isChangingScene = false;
     bool BlackScreenFadeIn = false;
     bool BlackScreenFadeOut = false;
     float BlackScreenFadeInSpeed;
     float BlackScreenFadeOutSpeed;
-    string newSceneName = "";
+    string NewSceneName = "";
 
     void Awake()
     {
-        if (!Auxiliary.AssureSingleton(ref instance, gameObject))
+        if (!Auxiliary.EnsureSingleton(ref instance, gameObject))
         {
             return;
         }
@@ -36,6 +37,14 @@ public class SceneChanger : MonoBehaviour
     }
     void Update()
     {
+        if (isChangingScene)
+        {
+            FadeToNewScene();
+        }
+    }
+
+    void FadeToNewScene()
+    {
         if (BlackScreenFadeIn)
         {
             BlackScreenCanvasGroup.alpha += BlackScreenFadeInSpeed * Time.deltaTime;
@@ -43,7 +52,8 @@ public class SceneChanger : MonoBehaviour
             {
                 BlackScreenCanvasGroup.alpha = 1;
                 BlackScreenFadeIn = false;
-                SceneManager.LoadScene(newSceneName);
+                GameState.SaveGameState();
+                SceneManager.LoadScene(NewSceneName);
                 BlackScreenFadeOut = true;
             }
         }
@@ -56,15 +66,20 @@ public class SceneChanger : MonoBehaviour
                 BlackScreenFadeOut = false;
             }
         }
+        else
+        {
+            isChangingScene = false;
+        }
     }
 
     /// <summary>
-    /// Changes to a scene given it's name with fade in/out effect.
+    /// Changes to a new scene with fade in/out effect.
     /// </summary>
-    /// <param name="sceneName">Name of the new scene</param>
-    public void ChangeScene(string sceneName)
+    /// <param name="newSceneName">Name of the new scene</param>
+    public void StartSceneChange(string newSceneName)
     {
-        newSceneName = sceneName;
+        NewSceneName = newSceneName;
         BlackScreenFadeIn = true;
+        isChangingScene = true;
     }
 }

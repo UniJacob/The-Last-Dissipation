@@ -15,7 +15,25 @@ public class NoteSpawner : MonoBehaviour
     void Start()
     {
         SpawnCanceller = new CancellationTokenSource();
-        BeginStage(SpawnCanceller.Token);
+        BeginWaitForFirstBeat();
+    }
+
+    async void BeginWaitForFirstBeat()
+    {
+        float waitTime = StageState.SPB / 2;
+        if (GameState.StageMusicDelay < 0)
+        {
+            waitTime += -GameState.StageMusicDelay;
+        }
+        try
+        {
+            await Awaitable.WaitForSecondsAsync(waitTime, SpawnCanceller.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        BeginNoteSpawn();
     }
 
     /// <summary>
@@ -23,7 +41,7 @@ public class NoteSpawner : MonoBehaviour
     /// Automatically adjusts for unwanted delays caused by system constraints.
     /// </summary>
     /// <param name="cancellationToken"></param>
-    async void BeginStage(CancellationToken cancellationToken)
+    async void BeginNoteSpawn()
     {
         float lastTime = Time.time, BadDelay = 0;
         try
@@ -38,7 +56,7 @@ public class NoteSpawner : MonoBehaviour
                     }
                 }
                 float waitTime = StageState.SPB / StageManager.Weights[i] - BadDelay;
-                await Awaitable.WaitForSecondsAsync(waitTime, cancellationToken);
+                await Awaitable.WaitForSecondsAsync(waitTime, SpawnCanceller.Token);
                 BadDelay = Time.time - lastTime - waitTime;
                 lastTime = Time.time;
             }

@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// A singleton script responsible for animating text in a "typing" fashion.
+/// A script responsible for animating text in a "typing" fashion.
 /// </summary>
 public class TextAnimator : MonoBehaviour
 {
@@ -13,32 +13,31 @@ public class TextAnimator : MonoBehaviour
     [SerializeField] bool DialogOnStart = false;
     [SerializeField] string DialogFileName = "start";
 
-    static TextAnimator instance;
     string[] sentences;
     int currentIndex = 0;
 
     // Animation state variables
-    private bool isAnimating = false;
-    private float stopper = 0f;
-    private int currentVisibleCount = 0;
-    private int totalVisibleCharacters = 0;
-
-    void Awake()
-    {
-        Auxiliary.AssureSingleton(ref instance, gameObject);
-    }
+    bool isTyping = false;
+    float stopper = 0f;
+    int currentVisibleCount = 0;
+    int totalVisibleCharacters = 0;
 
     void Start()
     {
-        if (DialogOnStart)
+        if (DialogOnStart && !GameState.ExhaustedDialogs.Contains(DialogFileName))
         {
+            gameObject.SetActive(true);
             StartDialog(OverworldState.DialogsMap[DialogFileName]);
+        }
+        else
+        {
+            gameObject.SetActive(false);
         }
     }
 
     void Update()
     {
-        if (isAnimating)
+        if (isTyping)
         {
             stopper += Time.deltaTime;
 
@@ -52,7 +51,7 @@ public class TextAnimator : MonoBehaviour
                 // Check if animation is complete
                 if (currentVisibleCount >= totalVisibleCharacters)
                 {
-                    isAnimating = false;
+                    isTyping = false;
                     SentenceEndCursor.SetActive2(true);
                 }
             }
@@ -65,10 +64,12 @@ public class TextAnimator : MonoBehaviour
     /// <param name="Dialog">A TextAsset containing all of the sentences of a dialog</param>
     public void StartDialog(TextAsset Dialog)
     {
-        OverworldState.InDialog = true;
+        OverworldState.IsInDialog = true;
         sentences = Auxiliary.TextAssetToSentences(ref Dialog);
         transform.gameObject.SetActive(true);
         stopper = 0;
+        GameState.ExhaustedDialogs.Add(DialogFileName);
+
         AnimateSentence();
     }
 
@@ -81,12 +82,18 @@ public class TextAnimator : MonoBehaviour
         {
             DialogTextBox.text = sentences[currentIndex++];
             StartTextAnimation();
+            return;
+        }
+        OverworldState.IsInDialog = false;
+        if (GetComponent<CanvasFader>() != null)
+        {
+            GetComponent<CanvasFader>().TriggerFadeOut();
         }
         else
         {
-            OverworldState.InDialog = false;
-            TextPanel.SetActive(false);
+            gameObject.SetActive(false);
         }
+        GameState.SaveGameState();
     }
 
     /// <summary>
@@ -101,7 +108,7 @@ public class TextAnimator : MonoBehaviour
         stopper = 0f;
 
         SentenceEndCursor.SetActive2(false);
-        isAnimating = true;
+        isTyping = true;
     }
 
     /// <summary>
@@ -109,9 +116,9 @@ public class TextAnimator : MonoBehaviour
     /// </summary>
     public void CompleteCurrentAnimation()
     {
-        if (isAnimating)
+        if (isTyping)
         {
-            isAnimating = false;
+            isTyping = false;
             DialogTextBox.maxVisibleCharacters = totalVisibleCharacters;
             SentenceEndCursor.SetActive2(true);
         }
@@ -119,6 +126,6 @@ public class TextAnimator : MonoBehaviour
 
     void OnDestroy()
     {
-        isAnimating = false;
+        isTyping = false;
     }
 }

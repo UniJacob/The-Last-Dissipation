@@ -10,18 +10,15 @@ public class BarBehavior : MonoBehaviour
     [SerializeField] NoteProperties NoteProperties;
 
     /// <summary>
-    /// Bar Units Per Second (speed)
-    /// </summary>
-    [HideInInspector] public float barUPS;
-
-    /// <summary>
     /// Whether the bar is currently going up (if false - it's going down).
     /// </summary>
     [HideInInspector] public bool up = true;
 
+    [Tooltip("If greater than 0, debug logs will be enabled")]
+    [SerializeField] float _DebugLog = 1;
+
     float currentY;
     float FreezeTimer;
-    bool Bounced;
     bool stopped;
 
     void Start()
@@ -29,15 +26,17 @@ public class BarBehavior : MonoBehaviour
         Vector3 currScale = transform.localScale;
         currScale.x = StageState.ScreenWidth;
         transform.localScale = currScale;
-        barUPS = StageState.SpawnAreaHeight * StageState.BPS;
 
         transform.position = Vector3.zero;
         stopped = false;
         currentY = 0;
-        Bounced = false;
         up = true;
         FreezeTimer = NoteProperties.FadeInTime + NoteProperties.ScaleInTime;
-        if (StageManager._debug > 0)
+        if (GameState.StageMusicDelay < 0)
+        {
+            FreezeTimer += -GameState.StageMusicDelay;
+        }
+        if (_DebugLog > 0)
             Debug.Log($"Freezing the bar for {FreezeTimer} seconds");
     }
 
@@ -54,8 +53,8 @@ public class BarBehavior : MonoBehaviour
         if (stopped) return;
         Vector3 currPosition = transform.position;
         int sign = (up ? 1 : -1);
-        float speed = sign * barUPS;
-        if (FreezeTimer != 0)
+        float speed = sign * StageState.BarSpeed;
+        if (FreezeTimer < 0)
         {
             currentY += speed * -FreezeTimer;
             FreezeTimer = 0;
@@ -65,17 +64,11 @@ public class BarBehavior : MonoBehaviour
         {
             currentY = sign * StageState.SpawnAreaHeight - currentY;
             up = !up;
-            if (!Bounced)
-            {
-                float extraDistance = StageState.SpawnAreaHeight / 2 - currentY;
-                float MusicStartDelay = extraDistance / barUPS;
-                Bounced = true;
-                StageManager.PlayMusic(MusicStartDelay);
-            }
         }
         currPosition.y = currentY;
         transform.position = currPosition;
     }
+
     public void Stop()
     {
         stopped = true;

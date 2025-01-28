@@ -1,5 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
+
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 using TouchPhase = UnityEngine.InputSystem.TouchPhase;
 
 /// <summary>
@@ -10,10 +13,13 @@ public class InputManagerOverworld : MonoBehaviour
     static InputManagerOverworld instance;
 
     [SerializeField] Camera MainCamera;
+    [SerializeField] Camera TouchFeedbackCamera;
     [Tooltip("Max distance to cast a ray from the camera when tapping (to check for ray collisions)")]
     [SerializeField] float MaxRayDistance = 300;
     [SerializeField] float MinTouchDistance = 0.1f;
     [SerializeField] GameObject Floor;
+    [SerializeField] GameObject TouchFeedbackPrefab;
+    [SerializeField] float TouchFeedbackDistance = 10;
 
     [Tooltip("If greater than 0, debug logs will be enabled")]
     [SerializeField] int DebugLog = 0;
@@ -22,24 +28,22 @@ public class InputManagerOverworld : MonoBehaviour
     /// The LayerMask of the floor (and other objects).
     /// </summary>
     int physicalLayerMask;
-    Vector2 lastScreenPosTouched = new Vector2(Mathf.Infinity, Mathf.Infinity);
+    Vector2 lastScreenPosTouched = Vector2.positiveInfinity;
 
-    private void Awake()
+    void Awake()
     {
-        Auxiliary.AssureSingleton(ref instance, gameObject);
+        if (!Auxiliary.EnsureSingleton(ref instance, gameObject))
+            return;
+        EnhancedTouchSupport.Enable();
     }
-    private void Start()
+
+    void Start()
     {
         if (MainCamera == null)
         {
             MainCamera = Camera.main;
         }
 
-        //touchScreenPresent = Touchscreen.current != null;
-        //if (OverworldState.WebGLCompatibility)
-        //{
-        //    Debug.LogWarning("Using Mouse input");
-        //}
         if (OverworldState.WebGLCompatibility)
         {
             InputSystem.EnableDevice(Mouse.current);
@@ -55,58 +59,101 @@ public class InputManagerOverworld : MonoBehaviour
 
     void Update()
     {
+        bool updatePlayerDestination = true;
         if (OverworldState.WebGLCompatibility)
         {
-            MouseUpdate();
+            updatePlayerDestination = MouseUpdate();
         }
         else
         {
-            TouchUpdate();
+            updatePlayerDestination = TouchUpdate();
+        }
+        //if (OverworldState.InTutorial)
+        //{
+        //    lastScreenPosTouched = Vector2.positiveInfinity;
+        //    return;
+        //}
+        //if (lastScreenPosTouched == Vector2.positiveInfinity)
+        //{
+        //    return;
+        //}
+        if (updatePlayerDestination)
+        {
+            UpdatePlayerDestination(lastScreenPosTouched);
         }
     }
 
     /// <summary>
     /// Handles screen touches and uses them to asign values such as PlayerDestination.
+    /// <return>Whether a new touch was received.</return>
     /// </summary>
-    private void TouchUpdate()
+    bool TouchUpdate()
     {
-        foreach (var touch in Touchscreen.current.touches)
+        bool isNewTouch = false;
+        foreach (Touch touch in Touch.activeTouches)
         {
-            var touchState = touch.ReadValue();
-            if (touchState.phase == TouchPhase.Began || touchState.phase == TouchPhase.Moved)
+            if (touch.phase == TouchPhase.Began)
             {
-                var screenPosTouched = touchState.position;
-                if (float.IsInfinity(screenPosTouched.x) || float.IsInfinity(screenPosTouched.y))
-                {
-                    continue;
-                }
-                if (Vector2.Distance(lastScreenPosTouched, screenPosTouched) < MinTouchDistance)
-                {
-                    continue;
-                }
-                lastScreenPosTouched = screenPosTouched;
-                UpdatePlayerDestination(screenPosTouched);
-
+                DisplayTouchFeedback(touch.screenPosition);
             }
-            //    case UnityEngine.InputSystem.TouchPhase.Began:
-            //    case UnityEngine.InputSystem.TouchPhase.Moved:
-            //    case UnityEngine.InputSystem.TouchPhase.Stationary:
-            //    case UnityEngine.InputSystem.TouchPhase.Ended:
-            //    case UnityEngine.InputSystem.TouchPhase.Canceled:
+            else if (touch.phase != TouchPhase.Moved)
+            {
+                continue;
+            }
+            if (Vector2.Distance(lastScreenPosTouched, touch.screenPosition) < MinTouchDistance)
+            {
+                continue;
+            }
+            lastScreenPosTouched = touch.screenPosition;
+            isNewTouch = true;
+
         }
+        return isNewTouch;
+    }
+
+    /// <summary>
+    /// Displays visual touch feedback.
+    /// </summary>
+    /// <param name="feedBackPos">2D position in which to display touch-animation</param>
+    void DisplayTouchFeedback(Vector2 feedBackPos)
+    {
+        Vector3 tmp = feedBackPos;
+        tmp.z = TouchFeedbackDistance;
+        var pos = TouchFeedbackCamera.ScreenToWorldPoint(tmp);
+        if (DebugLog > 0)
+        {
+            Debug.Log($"Touch feedback at {pos}");
+        }
+        Instantiate(TouchFeedbackPrefab, pos, Quaternion.identity);
     }
 
     /// <summary>
     /// Handles mouse clicks and uses them to asign values such as PlayerDestination.
+    /// <return>Whether a new click was received.</return>
     /// </summary>
-    private void MouseUpdate()
+    bool MouseUpdate()
     {
+        bool changed = false;
         if (Mouse.current.leftButton.isPressed)
         {
             if (Mouse.current.leftButton.wasPressedThisFrame)
             {
-                Vector2 screenPosTouched = Mouse.current.position.ReadValue();
-                UpdatePlayerDestination(screenPosTouched);
+                lastScreenPosTouched = Mouse.current.position.ReadValue();
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    void UpdatePlayerDestination(Vector2 screenPosTouched)
+    {
+        if (GetPhysicalObjectTouchPosition(screenPosTouched, out Vector3 touchLocation, out GameObject touchedGO))
+        {
+            if (DebugLog > 0)
+                Debug.Log($"Tapped on {touchedGO.name} in {touchLocation}");
+            if (touchedGO.CompareTag(Floor.tag))
+            {
+                OverworldState.PlayerDestination = touchLocation;
             }
         }
     }
@@ -131,18 +178,5 @@ public class InputManagerOverworld : MonoBehaviour
             return true;
         }
         return false;
-    }
-
-    void UpdatePlayerDestination(Vector2 screenPosTouched)
-    {
-        if (GetPhysicalObjectTouchPosition(screenPosTouched, out Vector3 touchLocation, out GameObject touchedGO))
-        {
-            if (DebugLog > 0)
-                Debug.Log($"Tapped on {touchedGO.name} in {touchLocation}");
-            if (touchedGO.CompareTag(Floor.tag))
-            {
-                OverworldState.PlayerDestination = touchLocation;
-            }
-        }
     }
 }

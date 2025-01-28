@@ -7,7 +7,7 @@ using UnityEngine;
 public static class OverworldState
 {
     /// <summary>
-    /// Should be true when building for WebGL: disables text animation and switches to mouse input.
+    /// Should be true when building for WebGL, switches to mouse input among other things.
     /// </summary>
     public static bool WebGLCompatibility = false;
 
@@ -19,12 +19,17 @@ public static class OverworldState
     /// <summary>
     /// Whether a dialog is currently occuring.
     /// </summary>
-    public static bool InDialog = false;
+    public static bool IsInDialog = false;
 
     /// <summary>
-    /// Whether a tutorial is currently displayed.
+    /// Whether a menu is currently displayed.
     /// </summary>
-    public static bool InTutorial = false;
+    public static bool IsInMenu = false;
+
+    /// <summary>
+    /// Whether an immobilizing animation is currently displayed.
+    /// </summary>
+    public static bool IsInAnimation = false;
 
     /// <summary>
     /// Current destination of the player (position on the ground).

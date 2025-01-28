@@ -11,11 +11,11 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        if (DisableInDialog && OverworldState.InDialog)
+        if (DisableInDialog && OverworldState.IsInDialog)
         {
             OverworldState.PlayerDestination = Vector3.positiveInfinity;
         }
-        else if (OverworldState.InTutorial)
+        else if (OverworldState.IsInMenu || OverworldState.IsInAnimation)
         {
             OverworldState.PlayerDestination = Vector3.positiveInfinity;
         }
