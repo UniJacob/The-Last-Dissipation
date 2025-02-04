@@ -1,4 +1,5 @@
-Accelerating = 6
-Eternal = 1
+Impending = 1
+Silent = 4
+Ephemeral = 5
 Fluctuating = 7
-Beginning = 1
+Destructive = 8
